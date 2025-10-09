@@ -1,13 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import * as Location from 'expo-location';
 import { Accelerometer } from 'expo-sensors';
+import React, { useEffect, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// Coordenadas da copa
-const COPA_LATITUDE = -21.7999845;
-const COPA_LONGITUDE = -50.8841291;
+// Coordenadas da copa (usando as do seu código modificado)
+const COPA_LATITUDE = -21.800093;
+const COPA_LONGITUDE = -50.883856;
 
-function getAngleToTarget(userLat: number, userLng: number, targetLat: number, targetLng: number, heading: number) {
+/**
+ * Calcula o bearing absoluto (0-360 graus) da localização do usuário para a localização do alvo.
+ * @param userLat Latitude do usuário.
+ * @param userLng Longitude do usuário.
+ * @param targetLat Latitude do alvo.
+ * @param targetLng Longitude do alvo.
+ * @returns O bearing absoluto em graus a partir do Norte (0-360).
+ */
+function getBearingToTarget(userLat: number, userLng: number, targetLat: number, targetLng: number): number {
   const toRad = (deg: number) => deg * Math.PI / 180;
   const toDeg = (rad: number) => rad * 180 / Math.PI;
 
@@ -20,14 +28,46 @@ function getAngleToTarget(userLat: number, userLng: number, targetLat: number, t
             Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
 
   let bearing = toDeg(Math.atan2(y, x));
-  bearing = (bearing + 360) % 360;
-
-  const angle = bearing - heading;
-  return angle;
+  bearing = (bearing + 360) % 360; // Normaliza para 0-360
+  return bearing;
 }
 
-function getDirectionLabel(angle: number) {
-  const normalized = (angle + 360) % 360;
+/**
+ * Calcula o ângulo relativo para a seta apontar para o alvo,
+ * considerando a direção atual do dispositivo e a orientação visual inicial da seta.
+ *
+ * @param targetAbsoluteBearing Bearing absoluto para o alvo (0-360 graus).
+ * @param deviceHeading Direção absoluta do dispositivo (0-360 graus).
+ * @returns O ângulo em graus para a rotação da seta.
+ *          Assume que 0 graus de rotação visualmente faz a seta apontar para Leste.
+ *          A seta deve apontar para o alvo, relativo ao Norte do dispositivo.
+ */
+function getArrowRotationAngle(targetAbsoluteBearing: number, deviceHeading: number): number {
+    // Calculamos a direção do alvo relativa ao "Norte" do dispositivo (topo da tela).
+    // Se o dispositivo aponta para o Norte (heading 0), essa direção relativa é apenas o targetAbsoluteBearing.
+    // Se o dispositivo aponta para Leste (heading 90) e o alvo é Norte (bearing 0),
+    // a direção relativa do topo da tela é -90 ou 270 graus.
+    let relativeTargetDirectionFromDeviceNorth = (targetAbsoluteBearing - deviceHeading + 360) % 360;
+
+    // Agora, ajustamos para a orientação inicial da seta (ela aponta para Leste por padrão quando rotate é 0deg).
+    // Para fazer uma seta que aponta para Leste (90deg) apontar para `relativeTargetDirectionFromDeviceNorth`,
+    // a rotação necessária é `relativeTargetDirectionFromDeviceNorth - 90`.
+    let rotationNeeded = relativeTargetDirectionFromDeviceNorth - 90;
+
+    // Normaliza esta rotação para 0-360 graus para consistência.
+    rotationNeeded = (rotationNeeded + 360) % 360;
+
+    return rotationNeeded;
+}
+
+
+/**
+ * Retorna um rótulo de direção cardeal com base em um bearing absoluto.
+ * @param absoluteBearing O bearing absoluto em graus (0-360) a partir do Norte.
+ * @returns Uma string representando a direção cardeal.
+ */
+function getDirectionLabel(absoluteBearing: number): string {
+  const normalized = (absoluteBearing + 360) % 360; // Apenas para garantir que o ângulo seja positivo
   if (normalized >= 337.5 || normalized < 22.5) return 'Norte';
   if (normalized >= 22.5 && normalized < 67.5) return 'Nordeste';
   if (normalized >= 67.5 && normalized < 112.5) return 'Leste';
@@ -42,47 +82,59 @@ export default function Estagio1() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [heading, setHeading] = useState<number>(0);
-  const [accHeading, setAccHeading] = useState<number | null>(null);
+  const [accHeading, setAccHeading] = useState<number | null>(null); // Não usado para a seta, mas mantido
 
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+          console.log('Permissão de localização não concedida.');
+          return;
+      }
 
-      Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 1 },
+      // Monitora mudanças de posição (usando timeInterval para atualizações consistentes)
+      // Removido o alert disruptivo.
+      const locationSubscription = Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 1000 }, // Atualiza a cada 1 segundo
         (loc) => {
           setLatitude(loc.coords.latitude);
           setLongitude(loc.coords.longitude);
         }
       );
 
-      Location.watchHeadingAsync((data) => {
+      // Monitora mudanças de direção (heading)
+      const headingSubscription = Location.watchHeadingAsync((data) => {
         setHeading(data.trueHeading || data.magHeading || 0);
       });
+    
+      // Configuração do Acelerômetro (mantido, embora não diretamente usado para a rotação da seta)
+      Accelerometer.setUpdateInterval(500);
+      const accSub = Accelerometer.addListener(accData => {
+        const { x, y } = accData;
+        const angle = Math.atan2(y, x) * (180 / Math.PI);
+        setAccHeading(angle);
+      });
+
+      // Função de limpeza para remover os listeners quando o componente for desmontado
+      return () => {
+        locationSubscription.remove();
+        headingSubscription.remove();
+        accSub && accSub.remove();
+      };
     })();
+  }, []); // O array de dependências vazio garante que o efeito seja executado apenas uma vez
 
-    // Acelerômetro para maior precisão
-    Accelerometer.setUpdateInterval(500);
-    const accSub = Accelerometer.addListener(accData => {
-      const { x, y } = accData;
-      // Calcula ângulo do acelerômetro (em graus)
-      const angle = Math.atan2(y, x) * (180 / Math.PI);
-      setAccHeading(angle);
-    });
-
-    return () => {
-      accSub && accSub.remove();
-    };
-  }, []);
-
-  // Usa heading do GPS, mas pode combinar com acelerômetro se quiser
-  let arrowAngle = 0;
+  // Calcula o bearing absoluto para o alvo
+  let targetAbsoluteBearing = 0;
   if (latitude !== null && longitude !== null) {
-    arrowAngle = getAngleToTarget(latitude, longitude, COPA_LATITUDE, COPA_LONGITUDE, heading);
+    targetAbsoluteBearing = getBearingToTarget(latitude, longitude, COPA_LATITUDE, COPA_LONGITUDE);
   }
 
-  const directionLabel = getDirectionLabel(arrowAngle);
+  // Calcula o ângulo para a seta girar, considerando a direção do dispositivo E o estilo inicial da seta
+  const arrowAngle = getArrowRotationAngle(targetAbsoluteBearing, heading);
+
+  // Obtém o rótulo da direção cardeal para o alvo (direção absoluta)
+  const directionLabel = getDirectionLabel(targetAbsoluteBearing);
 
   return (
     <View style={styles.container}>
