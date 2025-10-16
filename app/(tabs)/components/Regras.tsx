@@ -10,6 +10,7 @@ import {
 import { router } from "expo-router";
 
 export default function Historia() {
+  const name = "VITINHO";
 
   return (
     <View style={styles.container}>
@@ -25,34 +26,37 @@ export default function Historia() {
         style={styles.textBox}
         contentContainerStyle={{ paddingBottom: 24 }}
       >
-        <Text style={styles.titulo}>História do Fantasma</Text>
+        <Text style={styles.titulo}>Olá {name}, pronto para essa busca?</Text>
         <Text style={styles.texto}>
-          Em 2013, quando a Escola SESI de Osvaldo Cruz ainda estava em
-          construção, a região em volta era pouco movimentada. Muitos moradores
-          lembram de um menino que vivia nas proximidades da obra e que passava
-          horas explorando o terreno. Ele se chamava Vitinho, tinha apenas 8
-          anos, e era conhecido por sua curiosidade e pela mania de brincar
-          perto dos trabalhadores.
-          {"\n\n"}O local era perigoso. O terreno havia sido de um antigo sítio,
-          e para erguer o novo prédio foi preciso abrir uma grande escavação
-          para assentar os alicerces. Entre máquinas, entulhos e o enorme
-          buraco, não era lugar para uma criança.
+          Funcionamento do Jogo:
           {"\n\n"}
-          Certa tarde, enquanto os trabalhadores estavam distraídos, Vitinho se
-          aproximou demais da borda da construção. Um descuido… e ele caiu. O
-          impacto foi fatal. A tragédia marcou a cidade, mas o assunto foi
-          abafado para não prejudicar a obra e a inauguração da escola.
+          Você está preso na escola. O fantasma Vitinho lhe dará charadas que
+          apontam para diferentes locais da escola. Sua missão é decifrar os
+          enigmas, encontrar os lugares corretos e validar cada etapa com uma
+          fotografia.
           {"\n\n"}
-          Com o tempo, começaram os rumores. Alguns funcionários noturnos
-          afirmaram ouvir passos apressados no pátio vazio, como se uma criança
-          ainda corresse por ali. Estudantes contam que já ouviram risadas
-          baixas e distantes quando estavam sozinhos. Outros juram ter visto,
-          pela janela, a silhueta de um menino parado no escuro, observando em
-          silêncio.
+          Cada acerto revelará a próxima charada, aproximando você da chave que
+          abrirá a saída.
           {"\n\n"}
-          Ninguém nunca conseguiu provar nada, mas a história continua viva.
-          Muitos acreditam que a alma de Vitinho vagueia pela escola quando a
-          noite cai, preso para sempre ao lugar onde sua vida terminou.
+          Regras Básicas:
+          {"\n\n"}
+          Você sempre começa com uma charada fornecida por Vitinho.
+          {"\n\n"}
+          Cada acerto revelará a próxima charada, aproximando você da chave que
+          abrirá a saída.
+          {"\n\n"}
+          Tire uma fotografia do que for indicado no
+          {"\n\n"}
+          Tire uma fotografia do que for indicado no local para validar a
+          missão.
+          {"\n\n"}
+          Após a validação, a próxima charada será liberada. 
+          {"\n\n"}
+          Se passar 5 minutos sem encontrar o local, você recebe como ajuda um
+          mapa e uma bússola.
+          {"\n\n"}
+          O jogo termina quando você encontrar a chave final e conseguir
+          sair da escola. 
           {"\n\n"}
         </Text>
         F
