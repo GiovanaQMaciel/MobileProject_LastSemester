@@ -11,11 +11,11 @@ export default function BoasVindas() {
   const [nome, setNome] = useState('');
   const handleIniciar = () => {
     if (nome.trim().length > 0) {
-      router.navigate('/(tabs)/Historia1');
+      router.navigate({ pathname: '/(tabs)/Historia1', params: { nome: nome } });
     } else {
       alert('Por favor, digite seu nome ou apelido.');
     }
-  };
+  };  
 
   return (
     <View style={styles.container}>

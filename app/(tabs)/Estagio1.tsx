@@ -8,6 +8,7 @@ import { router } from "expo-router";
 const COPA_LATITUDE = -21.800093;
 const COPA_LONGITUDE = -50.883856;
 
+// Funções Auxiliares (mantidas para garantir que estejam no escopo correto)
 
 function getBearingToTarget(userLat: number, userLng: number, targetLat: number, targetLng: number): number {
   const toRad = (deg: number) => deg * Math.PI / 180;
@@ -27,13 +28,13 @@ function getBearingToTarget(userLat: number, userLng: number, targetLat: number,
 }
 
 
+// A função que o motor de erro acusou, está aqui no escopo global
 function getArrowRotationAngle(targetAbsoluteBearing: number, deviceHeading: number): number {
     // Calculamos a direção do alvo relativa ao "Norte" do dispositivo (topo da tela).
     let relativeTargetDirectionFromDeviceNorth = (targetAbsoluteBearing - deviceHeading + 360) % 360;
 
-    // A seta agora aponta para Oeste (270 graus) quando rotate é 0deg.
+    // A seta aponta para Oeste (270 graus) quando rotate é 0deg.
     // A rotação necessária é (direção_relativa - 270).
-    // Subtraímos 270 para compensar o estilo inicial apontando para Oeste.
     let rotationNeeded = relativeTargetDirectionFromDeviceNorth - 270;
 
     // Normaliza
@@ -63,40 +64,57 @@ export default function Estagio1() {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [heading, setHeading] = useState<number>(0);
   const [accHeading, setAccHeading] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // Para erros de permissão/localização
 
   useEffect(() => {
-    (async () => {
+    let locationSubscription: Location.LocationSubscription | undefined;
+    let headingSubscription: Location.LocationSubscription | undefined;
+    let accSub: any;
+
+    const setupLocation = async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
+      
       if (status !== 'granted') {
-          console.log('Permissão de localização não concedida.');
+          setErrorMessage('Permissão de localização não concedida. Por favor, habilite-a nas configurações do seu dispositivo.');
           return;
       }
-
-      const locationSubscription = Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, timeInterval: 1000 },
+      
+      // Corrigindo a lentidão: Adicionando distanceInterval para forçar atualizações
+      locationSubscription = await Location.watchPositionAsync(
+        { 
+          accuracy: Location.Accuracy.High, 
+          timeInterval: 5, // Tenta atualizar a cada 1 segundo (max freq)
+          distanceInterval: 0.1, // Força a atualização a cada 1 metro de movimento
+        },
         (loc) => {
           setLatitude(loc.coords.latitude);
           setLongitude(loc.coords.longitude);
+          setErrorMessage(null); // Limpa o erro se a localização estiver OK
         }
       );
 
-      const headingSubscription = Location.watchHeadingAsync((data) => {
+      // Assinatura de Direção (Heading)
+      headingSubscription = await Location.watchHeadingAsync((data) => {
         setHeading(data.trueHeading || data.magHeading || 0);
       });
     
+      // Assinatura do Acelerômetro (usado para fallback de Heading, se necessário)
       Accelerometer.setUpdateInterval(500);
-      const accSub = Accelerometer.addListener(accData => {
+      accSub = Accelerometer.addListener(accData => {
         const { x, y } = accData;
         const angle = Math.atan2(y, x) * (180 / Math.PI);
         setAccHeading(angle);
       });
+    };
+    
+    setupLocation();
 
-      return () => {
-        locationSubscription.remove();
-        headingSubscription.remove();
-        accSub && accSub.remove();
-      };
-    })();
+    return () => {
+      // Limpeza de todas as assinaturas ao desmontar o componente
+      locationSubscription && locationSubscription.remove();
+      headingSubscription && headingSubscription.remove();
+      accSub && accSub.remove();
+    };
   }, []);
 
   let targetAbsoluteBearing = 0;
@@ -104,12 +122,15 @@ export default function Estagio1() {
     targetAbsoluteBearing = getBearingToTarget(latitude, longitude, COPA_LATITUDE, COPA_LONGITUDE);
   }
 
-  // A FUNÇÃO FOI ATUALIZADA PARA CONSIDERAR A NOVA ORIENTAÇÃO INICIAL DA SETA (OESTE/270°)
+  // Chamada da função garantida no escopo
   const arrowAngle = getArrowRotationAngle(targetAbsoluteBearing, heading);
   const directionLabel = getDirectionLabel(targetAbsoluteBearing);
 
   return (
     <View style={styles.container}>
+      {/* Exibe o erro de permissão ou localização */}
+      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+
       <Text style={styles.estagio}>ESTÁGIO 1</Text>
       <Text style={styles.titulo}>VÁ PARA A COPA</Text>
       <Text style={styles.subtitulo}>Inicie a experiência na{'\n'}copa escolar</Text>
@@ -209,22 +230,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 71, // 75 (meio) - 4 (meia altura) = 71
     left: 35, // 75 (meio) - 40 (meia largura) = 35. Centraliza (150/2 - 80/2 = 35).
-    // NOVO: Adiciona rotação para o corpo da seta apontar para Oeste (esquerda)
     transform: [{ rotate: '180deg' }], 
   },
   arrowTip: {
     width: 0,
     height: 0,
-    // INVERTE as bordas para que a ponta aponte para a esquerda
-    borderRightWidth: 18, // Usamos borderRightWidth em vez de borderLeftWidth
+    borderRightWidth: 18, 
     borderRightColor: '#B03A1A',
     borderTopWidth: 9,
     borderTopColor: 'transparent',
     borderBottomWidth: 9,
     borderBottomColor: 'transparent',
     position: 'absolute',
-    top: 66, // 75 (meio) - 9 (meia altura total 18) = 66
-    left: 17, // 35 (left da arrow) - 18 (width da nova ponta) = 17. ISSO GARANTE A CONEXÃO.
+    top: 66, 
+    left: 17, 
   },
   directionText: {
     color: '#fff',
@@ -259,5 +278,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     fontStyle: 'italic',
+  },
+  errorText: {
+    color: 'yellow',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    padding: 8,
+    backgroundColor: '#8B3A3A',
+    borderRadius: 5,
+    width: '100%',
   },
 });

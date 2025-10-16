@@ -7,10 +7,20 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import { router } from "expo-router";
+// Importa 'useLocalSearchParams' do Expo Router para ler o parâmetro de navegação
+import { router, useLocalSearchParams } from "expo-router"; 
 
 export default function Historia() {
-  const name = "VITINHO";
+  // 1. Usa o hook para ler todos os parâmetros passados na navegação
+  const params = useLocalSearchParams(); 
+
+  // 2. Obtém o parâmetro 'nome' (ou qualquer nome que você usar ao navegar).
+  //    Usa "VITINHO" como valor padrão (fallback) caso nenhum parâmetro seja passado.
+  const name = params.nome || "VITINHO"; 
+
+  // OBSERVAÇÃO IMPORTANTE: 
+  // O nome do parâmetro usado aqui (params.nome) 
+  // deve ser o mesmo usado ao chamar o router.navigate (ex: params: { nome: 'ValorAqui' })
 
   return (
     <View style={styles.container}>
@@ -26,6 +36,7 @@ export default function Historia() {
         style={styles.textBox}
         contentContainerStyle={{ paddingBottom: 24 }}
       >
+        {/* Agora o 'name' é dinâmico, vindo do parâmetro de navegação */}
         <Text style={styles.titulo}>Olá {name}, pronto para essa busca?</Text>
         <Text style={styles.texto}>
           Funcionamento do Jogo:
@@ -63,15 +74,16 @@ export default function Historia() {
       </ScrollView>
       <TouchableOpacity
         style={styles.botao}
-        onPress={() => router.navigate("/(tabs)/components/Regras")}
+        onPress={() => router.navigate("/(tabs)/components/Estagio2")}
       >
-        <Text style={styles.botaoTexto}>Voltar ao Jogo</Text>
+        <Text style={styles.botaoTexto}>Estou pronto</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // ... (Seus estilos permanecem os mesmos)
   container: {
     flex: 1,
     backgroundColor: "#ededed",

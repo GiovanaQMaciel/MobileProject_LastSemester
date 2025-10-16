@@ -7,9 +7,15 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import { router } from "expo-router";
+// IMPORTANTE: Adiciona useLocalSearchParams para ler parâmetros de rota
+import { router, useLocalSearchParams } from "expo-router"; 
 
 export default function Historia() {
+  // Usa o hook para ler os parâmetros da URL.
+  const params = useLocalSearchParams(); 
+  
+  // Acessa o parâmetro 'nome'. Se for nulo ou indefinido, usa 'Visitante' como padrão.
+  const nomeDoJogador = params.nome || 'Visitante';
 
   return (
     <View style={styles.container}>
@@ -25,7 +31,8 @@ export default function Historia() {
         style={styles.textBox}
         contentContainerStyle={{ paddingBottom: 24 }}
       >
-        <Text style={styles.titulo}>História do Fantasma</Text>
+        {/* Linha adaptada para incluir o nome do jogador */}
+        <Text style={styles.titulo}>Olá {nomeDoJogador}, pronto para essa busca?</Text> 
         <Text style={styles.texto}>
           Em 2013, quando a Escola SESI de Osvaldo Cruz ainda estava em
           construção, a região em volta era pouco movimentada. Muitos moradores
@@ -55,11 +62,10 @@ export default function Historia() {
           noite cai, preso para sempre ao lugar onde sua vida terminou.
           {"\n\n"}
         </Text>
-        F
       </ScrollView>
       <TouchableOpacity
         style={styles.botao}
-        onPress={() => router.navigate("/(tabs)/components/Regras")}
+        onPress={() => router.navigate("/(tabs)/components/Estagio2")}
       >
         <Text style={styles.botaoTexto}>Voltar ao Jogo</Text>
       </TouchableOpacity>

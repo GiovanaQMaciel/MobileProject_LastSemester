@@ -117,7 +117,7 @@ export default function Historia() {
         <View style={{ width: "100%", alignItems: "center" }}>
           <TouchableOpacity
             style={styles.botao}
-            onPress={() => router.navigate("Vitinho")}
+            onPress={() => router.navigate("/(tabs)/components/Regras")}
           >
             <Text style={styles.botaoTexto}>Vamos Começar!</Text>
           </TouchableOpacity>
